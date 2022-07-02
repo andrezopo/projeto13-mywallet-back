@@ -12,44 +12,78 @@ const signUpSchema = joi.object({
 });
 
 export async function signIn(req, res) {
-  // Recebe informações por meio do corpo da requisição.
-  // Verifica se usuário e senha são de um mesmo documento da collection 'users'.
-  // Gera token baseado no nome de usuário utilizando uma string de codificação.
-  // Devolve novo objeto com usuário e token.
+  try {
+    // Recebe informações por meio do corpo da requisição.
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      res.status(400).send("E-mail e senha são obrigatórios!");
+      return;
+    }
+    // Verifica se usuário e senha são de um mesmo documento da collection 'users'.
+    const user = await db.collection("users").findOne({ email });
+    const passwordValidation = bcrypt.compareSync(password, user?.password);
+    if (!user || !passwordValidation) {
+      res.status(422).send("E-mail e/ou senha inválidos!");
+      return;
+    }
+
+    // Gera token baseado no nome de usuário utilizando uma string de codificação.
+    const token = jwt.sign({ email: user.email }, "André");
+    console.log(token);
+
+    const session = {
+      email,
+      token,
+    };
+
+    await db.collection("sessions").insertOne(session);
+    // Devolve novo objeto com usuário e token.
+    res.status(200).send({
+      ...session,
+      time: new Date.now(),
+    });
+  } catch (err) {
+    res.status(500).send("Falha ao conectar ao servidor!");
+  }
 }
 
 export async function signUp(req, res) {
-  // Recebe informações pelo corpo da requisição.
-  const user = req.body;
-  // Realiza verificação das informações utilizando biblioteca joi.
-  const { error } = signUpSchema.validate(user);
-  if (error) {
-    console.log("cheguei aqui");
-    res.status(400).send(error.details.messages);
-    return;
+  try {
+    // Recebe informações pelo corpo da requisição.
+    const user = req.body;
+    // Realiza verificação das informações utilizando biblioteca joi.
+    const { error } = signUpSchema.validate(user, { abortEarly: false });
+    if (error) {
+      console.log(error);
+      res.status(400).send(error.details.map((err) => err.message));
+      return;
+    }
+    // Confere se usuário ou email já existe no banco de dados 'users'.
+    const newUser = await db.collection("users").findOne({ email: user.email });
+
+    if (newUser) {
+      res.status(409).send("E-mail já utilizado!");
+      return;
+    }
+
+    if (user.password !== user.confirmPassword) {
+      res.status(400).send("Erro na confirmação de senha!");
+      return;
+    }
+
+    const encryptedPassword = bcrypt.hashSync(user.password, 12);
+
+    await db.collection("users").insertOne({
+      name: user.name,
+      email: user.email,
+      password: encryptedPassword,
+    });
+
+    res.status(200).send("Usuário criado com sucesso!");
+
+    // Insere novo usuário no banco de dados 'users'.
+  } catch (err) {
+    res.status(500).send("Falha ao conectar ao servidor!");
   }
-  // Confere se usuário ou email já existe no banco de dados 'users'.
-  const newUser = await db.collection("users").findOne({ email: user.email });
-
-  if (newUser) {
-    res.status(409).send("E-mail já utilizado!");
-    return;
-  }
-
-  if (user.password !== user.confirmPassword) {
-    res.status(400).send("Erro na confirmação de senha!");
-    return;
-  }
-
-  const encryptedPassword = bcrypt.hashSync(user.password, 10);
-
-  await db.collection("users").insertOne({
-    name: user.name,
-    email: user.email,
-    password: encryptedPassword,
-  });
-
-  res.status(200).send("Usuário criado com sucesso!");
-
-  // Insere novo usuário no banco de dados 'users'.
 }
