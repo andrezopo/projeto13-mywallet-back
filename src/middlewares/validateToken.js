@@ -5,6 +5,11 @@ async function validateToken(req, res, next) {
   const { id } = req.body;
   const { authorization } = req.headers;
 
+  if (!id || !authorization) {
+    res.status(400).send("Requisição incorreta!");
+    return;
+  }
+
   const token = authorization.replace("Bearer ", "");
 
   const session = await db.collection("sessions").findOne({ token });

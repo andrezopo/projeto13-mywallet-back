@@ -86,6 +86,18 @@ export async function signUp(req, res) {
   }
 }
 
+export async function signOut(req, res) {
+  const { id } = req.body;
+  const session = await db.collection("sessions").findOne({ id: ObjectId(id) });
+  if (!session) {
+    res.status(200).send("Ok");
+    return;
+  }
+  await db.collection.deleteOne({ id: ObjectId(id) });
+
+  res.status(200).send("Ok");
+}
+
 export async function updateToken(req, res) {
   const { id } = req.body;
 
