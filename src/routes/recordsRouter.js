@@ -5,15 +5,16 @@ import {
   deleteRecord,
   updateRecord,
 } from "../controllers/recordsController.js";
+import validateToken from "../middlewares/validateToken.js";
 
 const router = Router();
 
-router.get("/records", getRecords);
+router.get("/records", validateToken, getRecords);
 
-router.post("/records", createRecord);
+router.post("/records", validateToken, createRecord);
 
-router.delete("/records", deleteRecord);
+router.delete("/records", validateToken, deleteRecord);
 
-router.put("/records", updateRecord);
+router.put("/records", validateToken, updateRecord);
 
 export default router;

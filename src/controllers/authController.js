@@ -30,19 +30,17 @@ export async function signIn(req, res) {
 
     // Gera token baseado no nome de usuário utilizando uma string de codificação.
     const token = jwt.sign({ email: user.email }, "André");
-    console.log(token);
 
     const session = {
-      email,
+      id: ObjectId(user._id),
       token,
     };
 
-    await db.collection("sessions").insertOne(session);
+    await db
+      .collection("sessions")
+      .insertOne({ ...session, time: new Date().getTime() });
     // Devolve novo objeto com usuário e token.
-    res.status(200).send({
-      ...session,
-      time: new Date.now(),
-    });
+    res.status(200).send({ ...session });
   } catch (err) {
     res.status(500).send("Falha ao conectar ao servidor!");
   }
@@ -86,4 +84,22 @@ export async function signUp(req, res) {
   } catch (err) {
     res.status(500).send("Falha ao conectar ao servidor!");
   }
+}
+
+export async function updateToken(req, res) {
+  const { id } = req.body;
+
+  const session = await db.collection("sessions").findOne({ id: ObjectId(id) });
+
+  console.log(session);
+
+  await db.collection("sessions").updateOne(
+    { id: ObjectId(id) },
+    {
+      $set: {
+        time: Date.now(),
+      },
+    }
+  );
+  res.status(200).send();
 }
