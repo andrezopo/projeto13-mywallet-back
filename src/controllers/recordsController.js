@@ -54,6 +54,30 @@ export async function deleteRecord(req, res) {
 export async function updateRecord(req, res) {
   try {
     const { description, amount } = req.body;
+    const { recordid } = req.headers;
+    if (!description || !amount) {
+      res.status(400).send("Valor e descrição são obrigatórios!");
+      return;
+    }
+
+    const record = await db
+      .collection("records")
+      .findOne({ _id: ObjectId(recordid) });
+    if (!record) {
+      res.status(404).send("Registro não encontrado!");
+      return;
+    }
+
+    await db.collection("records").updateOne(
+      { _id: ObjectId(recordid) },
+      {
+        $set: {
+          description,
+          amount,
+        },
+      }
+    );
+    res.status(200).send("Registro alterado com sucesso!");
   } catch (err) {
     res.status(500).send("Falha ao conectar ao servidor!");
   }
