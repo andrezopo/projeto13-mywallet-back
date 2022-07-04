@@ -1,5 +1,4 @@
 import { db, ObjectId } from "../dbStrategy/mongo.js";
-import dayjs from "dayjs";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import joi from "joi";
@@ -22,8 +21,12 @@ export async function signIn(req, res) {
     }
     // Verifica se usuário e senha são de um mesmo documento da collection 'users'.
     const user = await db.collection("users").findOne({ email });
+    if (!user) {
+      res.status(422).send("E-mail e/ou senha inválidos!");
+      return;
+    }
     const passwordValidation = bcrypt.compareSync(password, user?.password);
-    if (!user || !passwordValidation) {
+    if (!passwordValidation) {
       res.status(422).send("E-mail e/ou senha inválidos!");
       return;
     }
@@ -40,7 +43,7 @@ export async function signIn(req, res) {
       .collection("sessions")
       .insertOne({ ...session, time: new Date().getTime() });
     // Devolve novo objeto com usuário e token.
-    res.status(200).send({ ...session });
+    res.status(200).send({ ...session, name: user.name });
   } catch (err) {
     res.status(500).send("Falha ao conectar ao servidor!");
   }
@@ -53,7 +56,6 @@ export async function signUp(req, res) {
     // Realiza verificação das informações utilizando biblioteca joi.
     const { error } = signUpSchema.validate(user, { abortEarly: false });
     if (error) {
-      console.log(error);
       res.status(400).send(error.details.map((err) => err.message));
       return;
     }
@@ -87,31 +89,41 @@ export async function signUp(req, res) {
 }
 
 export async function signOut(req, res) {
-  const { id } = req.body;
-  const session = await db.collection("sessions").findOne({ id: ObjectId(id) });
-  if (!session) {
-    res.status(200).send("Ok");
-    return;
-  }
-  await db.collection.deleteOne({ id: ObjectId(id) });
+  try {
+    const { id } = req.body;
+    const session = await db
+      .collection("sessions")
+      .findOne({ id: ObjectId(id) });
+    if (!session) {
+      res.status(200).send("Ok");
+      return;
+    }
+    await db.collection("sessions").deleteOne({ id: ObjectId(id) });
 
-  res.status(200).send("Ok");
+    res.status(200).send("Ok");
+  } catch (err) {
+    res.status(500).send("Erro interno!");
+  }
 }
 
 export async function updateToken(req, res) {
-  const { id } = req.body;
+  try {
+    const { id } = req.headers;
 
-  const session = await db.collection("sessions").findOne({ id: ObjectId(id) });
+    const session = await db
+      .collection("sessions")
+      .findOne({ id: ObjectId(id) });
 
-  console.log(session);
-
-  await db.collection("sessions").updateOne(
-    { id: ObjectId(id) },
-    {
-      $set: {
-        time: Date.now(),
-      },
-    }
-  );
-  res.status(200).send();
+    await db.collection("sessions").updateOne(
+      { id: ObjectId(id) },
+      {
+        $set: {
+          time: Date.now(),
+        },
+      }
+    );
+    res.status(200).send();
+  } catch (err) {
+    res.status(500).send("Erro interno!");
+  }
 }

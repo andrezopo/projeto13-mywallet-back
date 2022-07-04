@@ -3,8 +3,13 @@ import dayjs from "dayjs";
 
 export async function getRecords(req, res) {
   let recordsSum = 0;
+  const { id } = req.headers;
+  if (!id) {
+    res.status(401).send("Id do usuário não encontrado, não autorizado!");
+    return;
+  }
   // Fazer um find para pegar todos os registros e aplicar um forEach para atualizar uma variável de soma que representará o saldo.
-  const records = await db.collection("records").find({}).toArray();
+  const records = await db.collection("records").find({ userId: id }).toArray();
   records.forEach((record) => {
     if (record.type === "income") {
       recordsSum += parseFloat(record.amount);
@@ -20,9 +25,11 @@ export async function getRecords(req, res) {
 
 export async function createRecord(req, res) {
   try {
+    const { id } = req.headers;
     const { description, amount, type } = req.body;
     // Validação do tipo entre nova entrada ou nova saída pelo atributo 'type' do body.
     const record = await db.collection("records").insertOne({
+      userId: id,
       description,
       type,
       amount: amount.toString().replace("-", ""),
@@ -36,8 +43,8 @@ export async function createRecord(req, res) {
 
 export async function deleteRecord(req, res) {
   try {
-    const { recordId } = req.body;
-    await db.collection("records").deleteOne({ _id: ObjectId(recordId) });
+    const { recordid } = req.headers;
+    await db.collection("records").deleteOne({ _id: ObjectId(recordid) });
     res.status(200).send("Ok!");
   } catch (err) {
     res.status(500).send("Falha ao conectar ao servidor!");
@@ -45,6 +52,11 @@ export async function deleteRecord(req, res) {
 }
 
 export async function updateRecord(req, res) {
+  try {
+    const { description, amount } = req.body;
+  } catch (err) {
+    res.status(500).send("Falha ao conectar ao servidor!");
+  }
   // Realizar uma atualização de um registro utilizando a função updateOne.
   // Informações da atualização vêm pelo corpo da requisição, token de autenticação vem pelo headers.
 }

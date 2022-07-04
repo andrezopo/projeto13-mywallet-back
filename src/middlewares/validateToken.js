@@ -2,8 +2,7 @@ import { db, ObjectId } from "../dbStrategy/mongo.js";
 import jwt from "jsonwebtoken";
 
 async function validateToken(req, res, next) {
-  const { id } = req.body;
-  const { authorization } = req.headers;
+  const { id, authorization } = req.headers;
 
   if (!id || !authorization) {
     res.status(400).send("Requisição incorreta!");
